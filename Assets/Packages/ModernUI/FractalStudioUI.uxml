@@ -1,0 +1,51 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Packages/ModernUI/FractalStudioStyle.uss?fileID=7433441132597879392&amp;guid=24b9e65333a09184ca31c5c1d8e935ed&amp;type=3#FractalStudioStyle" />
+    <ui:VisualElement class="main-container">
+        <ui:VisualElement class="sidebar">
+            <ui:VisualElement class="header">
+                <ui:Label text="L-System for Fractals" class="title-text" />
+            </ui:VisualElement>
+            
+            <ui:ScrollView class="content-scroll" mode="Vertical" horizontal-scroller-visibility="Hidden">
+    
+                <ui:Label text="PRESET MANAGEMENT" class="section-title" />
+                <ui:DropdownField name="preset-dropdown" choices="Sierpinski, Koch Snowflake, Custom" index="0" />
+                <ui:VisualElement style="margin-top: 8px;">
+                    <ui:Button text="Save Preset" name="btn-save" class="unity-base-field__input" style="width: 100%;" />
+                </ui:VisualElement>
+                
+                <ui:Label text="CORE PARAMETERS" class="section-title" />
+                <ui:TextField name="input-name" label="Name" value="NewFractal" />
+                <ui:TextField name="input-axiom" label="Axiom" value="F" />
+        
+                <ui:FloatField name="input-angle" label="Angle (deg)" value="60" />
+                <ui:FloatField name="input-length" label="Length" value="1" />
+                
+                <ui:IntegerField name="input-iterations" label="Iterations" value="5" />
+                <ui:FloatField name="input-start-angle" label="Start Angle" value="0" />
+                
+                <ui:VisualElement style="flex-direction: row; justify-content: space-between; align-items: center;">
+                    <ui:Label text="PRODUCTION RULES" class="section-title" />
+                    <ui:Button text="+" name="btn-add-rule" style="background-color: transparent; color: rgb(129, 140, 248); border-width: 0; font-size: 16px; -unity-font-style: bold;" />
+                </ui:VisualElement>
+                <ui:VisualElement name="rules-container" style="margin-top: 8px;" />
+                
+                <ui:VisualElement style="padding-top: 24px; margin-top: 16px; border-top-width: 1px; border-top-color: rgb(39, 39, 42);">
+                    <ui:Button text="Generate Fractal" name="btn-generate" class="btn-primary" />
+                    <ui:Button text="Animate Step-by-Step" name="btn-animate" class="btn-secondary" />
+                </ui:VisualElement>
+
+            </ui:ScrollView>
+        </ui:VisualElement>
+        
+        <ui:VisualElement class="canvas-area">
+            <ui:VisualElement class="top-bar" style="align-items: center;">
+                <ui:Toggle name="toggle-theme" label="Theme: Dark" class="theme-toggle" />
+                <ui:Button text="Export PNG" name="btn-export" class="btn-export" />
+            </ui:VisualElement>
+            <ui:VisualElement class="canvas-container">
+                <ui:Image name="fractal-image" scale-mode="ScaleToFit" class="fractal-image" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

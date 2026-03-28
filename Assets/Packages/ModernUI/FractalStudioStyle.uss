@@ -1,0 +1,260 @@
+/* ========================================================= */
+/* KOYU TEMA (ORİJİNAL MODERN DARK THEME - DOKUNULMADI)      */
+/* ========================================================= */
+.main-container {
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    background-color: #09090b; 
+    color: #d4d4d8;
+}
+
+.sidebar {
+    width: 320px;
+    background-color: #18181b; 
+    border-right-width: 1px;
+    border-right-color: #27272a;
+    flex-direction: column;
+}
+
+.header {
+    padding: 24px;
+    border-bottom-width: 1px;
+    border-bottom-color: #27272a;
+}
+
+.title-text {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: #f4f4f5;
+}
+
+.content-scroll {
+    flex-grow: 1;
+    padding: 24px;
+}
+
+.section-title {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: #71717a;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-top: 16px;
+    letter-spacing: 1px;
+}
+
+.unity-base-field__label {
+    color: #a1a1aa;
+    font-size: 12px;
+    min-width: 90px;
+    -unity-text-align: middle-left;
+}
+
+.unity-base-field__input {
+    background-color: #09090b;
+    border-color: #27272a;
+    border-width: 1px;
+    border-radius: 6px;
+    color: #d4d4d8;
+    padding: 6px 8px;
+}
+
+.unity-base-field__input:focus {
+    border-color: #6366f1;
+}
+
+.btn-primary {
+    background-color: #4f46e5;
+    color: white;
+    border-width: 0;
+    border-radius: 8px;
+    padding: 12px;
+    -unity-font-style: bold;
+    margin-top: 8px;
+    transition-duration: 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #6366f1;
+    scale: 1.02;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: #818cf8;
+    border-color: #4f46e5;
+    border-width: 1px;
+    border-radius: 8px;
+    padding: 12px;
+    -unity-font-style: bold;
+    margin-top: 8px;
+    transition-duration: 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: rgba(79, 70, 229, 0.1);
+}
+
+.canvas-area {
+    flex-grow: 1;
+    position: relative;
+    background-color: #09090b;
+}
+
+.top-bar {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    flex-direction: row;
+    z-index: 10;
+}
+
+.btn-export {
+    background-color: rgba(24, 24, 27, 0.8);
+    color: #d4d4d8;
+    border-color: #27272a;
+    border-width: 1px;
+    border-radius: 20px;
+    padding: 8px 16px;
+}
+
+.btn-export:hover {
+    background-color: #27272a;
+}
+
+.canvas-container {
+    flex-grow: 1;
+    margin: 80px 24px 24px 24px;
+    background-color: #111113;
+    border-color: #27272a;
+    border-width: 1px;
+    border-radius: 16px;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.fractal-image {
+    width: 95%;
+    height: 95%;
+}
+
+/* ========================================================= */
+/* --- TEMA ANAHTARI (TOGGLE) ANA STİLİ ---                  */
+/* ========================================================= */
+.theme-toggle {
+    color: #d4d4d8;
+    -unity-font-style: bold;
+    margin-right: 16px;
+    /* WebGL'in elementi sıfır piksele ezip yok etmesini kesin olarak engeller: */
+    min-width: 120px; 
+    min-height: 24px;
+    flex-shrink: 0; 
+}
+
+/* Koyu Temada Kutu (Checkmark) Tasarımı */
+.theme-toggle .unity-toggle__checkmark {
+    background-color: #09090b;
+    border-color: #27272a;
+    border-width: 1px;
+    border-radius: 4px;
+    -unity-background-image-tint-color: #d4d4d8; /* Tik işaretinin rengi */
+}
+
+
+/* ========================================================= */
+/* AÇIK TEMA (MODERN LIGHT THEME - SOFT & AESTHETIC)         */
+/* ========================================================= */
+.light-theme { 
+    background-color: #f4f4f5; 
+    color: #09090b; 
+}
+
+/* Sol Menü ve Çizim Alanı Dışı (Göz yormayan soft gri) */
+.light-theme .sidebar { 
+    background-color: #f4f4f5; 
+    border-right-color: #d4d4d8; 
+}
+.light-theme .canvas-area { 
+    background-color: #e4e4e7; 
+}
+.light-theme .header { 
+    border-bottom-color: #d4d4d8; 
+}
+
+/* Yazılar ve Labellar */
+.light-theme .title-text, .light-theme .theme-toggle { color: #18181b; }
+.light-theme .section-title { color: #52525b; }
+.light-theme .unity-base-field__label { color: #3f3f46; }
+
+/* Inputlar çukur hissi vermesi için saf beyaz, focus efekti korundu */
+.light-theme .unity-base-field__input { 
+    background-color: #ffffff; 
+    border-color: #d4d4d8; 
+    color: #09090b; 
+}
+.light-theme .unity-base-field__input:focus {
+    border-color: #6366f1;
+}
+
+/* Primary buton orijinal İndigo renginde harika durur, sadece Secondary butonu açık temaya uyarlıyoruz */
+.light-theme .btn-secondary { 
+    color: #4f46e5; 
+    border-color: #4f46e5; 
+}
+.light-theme .btn-secondary:hover { 
+    background-color: rgba(79, 70, 229, 0.1); 
+}
+
+/* Tuvalin kendisi fraktalı patlatması için Saf Beyaz (#ffffff) */
+.light-theme .canvas-container { 
+    background-color: #ffffff; 
+    border-color: #d4d4d8; 
+}
+
+.light-theme .btn-export { 
+    background-color: #ffffff; 
+    color: #09090b; 
+    border-color: #d4d4d8; 
+}
+.light-theme .btn-export:hover { 
+    background-color: #f4f4f5; 
+}
+
+/* Açık Temada Kutu (Checkmark) Tasarımı */
+.light-theme .theme-toggle .unity-toggle__checkmark {
+    background-color: #ffffff;
+    border-color: #a1a1aa;
+    -unity-background-image-tint-color: #000000; 
+}
+
+/* ========================================================= */
+/* RESPONSIVE TASARIM (MOBİL CİHAZLAR İÇİN)                  */
+/* ========================================================= */
+@media (max-aspect-ratio: 1/1) {
+    .main-container {
+        flex-direction: column-reverse; 
+    }
+    .sidebar {
+        width: 100%;
+        height: 50%;
+        border-right-width: 0;
+        border-top-width: 1px;
+        border-top-color: #27272a;
+    }
+    .light-theme .sidebar {
+        border-top-color: #d4d4d8; 
+    }
+    .canvas-area {
+        width: 100%;
+        height: 50%;
+    }
+    .canvas-container {
+        margin: 16px 16px 16px 16px; 
+    }
+    .top-bar {
+        top: 8px;
+        right: 8px;
+    }
+}
