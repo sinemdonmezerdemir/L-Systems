@@ -16,7 +16,7 @@ MonoBehaviour:
   axiom: X
   angle: 22.5
   thickness: 1
-  iterations: 10
+  iterations: 7
   startAngle: 90
   rules:
   - symbol: 88

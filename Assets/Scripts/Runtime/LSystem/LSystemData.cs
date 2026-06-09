@@ -14,29 +14,58 @@ namespace LSystem
     [CreateAssetMenu(fileName = "NewLSystem", menuName = "L-System/Data")]
     public class LSystemData : ScriptableObject
     {
-        public string fractalName = "NewFractal";
+        [SerializeField] private string fractalName = "NewFractal";
+        public string FractalName => fractalName;
 
-        public string axiom = "F";
+        [SerializeField] private string axiom = "F";
+        public string Axiom => axiom;
 
-        public float angle = 60f;
+        [SerializeField] private float angle = 60f;
+        public float Angle => angle;
 
-        public int thickness = 1;
+        [SerializeField] private int thickness = 1;
+        public int Thickness => thickness;
 
-        public int iterations = 5;
+        [SerializeField] private int iterations = 5;
+        public int Iterations
+        {
+            get => iterations;
+            set => iterations = value;
+        }
 
-        public float startAngle = 0f;
+        [SerializeField] private float startAngle = 0f;
+        public float StartAngle => startAngle;
 
-        public List<LSystemRule> rules = new List<LSystemRule>();
+        [SerializeField] private List<LSystemRule> rules = new List<LSystemRule>();
+        public IReadOnlyList<LSystemRule> Rules => rules;
 
-        public Dictionary<char, string> GetRuleDictionary()
+        public Dictionary<char, string> BuildRuleDictionary()
         {
             var dict = new Dictionary<char, string>();
             foreach (var rule in rules)
             {
                 if (!string.IsNullOrEmpty(rule.replacement) && !dict.ContainsKey(rule.symbol))
+                {
                     dict[rule.symbol] = rule.replacement;
+                }
             }
             return dict;
+        }
+
+        public void UpdateData(string newName, string newAxiom, float newAngle, int newThickness, float newStartAngle, int newIterations, List<LSystemRule> newRules)
+        {
+            fractalName = newName;
+            axiom = newAxiom;
+            angle = newAngle;
+            thickness = newThickness;
+            startAngle = newStartAngle;
+            iterations = newIterations;
+
+            rules.Clear();
+            if (newRules != null)
+            {
+                rules.AddRange(newRules);
+            }
         }
     }
 }

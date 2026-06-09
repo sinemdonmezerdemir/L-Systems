@@ -16,76 +16,101 @@ namespace LSystem
             public override int GetHashCode() => (symbol.GetHashCode() * 397) ^ depth;
         }
 
-        private struct SubTreeData
+        private struct SubTreeMetrics
         {
             public Vector2 endPos;
             public int endDirOffset;
             public float maxRadius;
-            public bool hasDraws;
+            public bool containsVisibleSegments;
         }
 
-        private static readonly Dictionary<CacheKey, SubTreeData> cache = new Dictionary<CacheKey, SubTreeData>(1024);
-        private static readonly Stack<(Vector2, int)> sharedStack = new Stack<(Vector2, int)>(512);
+        private class GenerationContext
+        {
+            public readonly Dictionary<CacheKey, SubTreeMetrics> Cache = new Dictionary<CacheKey, SubTreeMetrics>(1024);
+            public readonly Stack<(Vector2, int)> TransformStack = new Stack<(Vector2, int)>(512);
+            public Dictionary<char, string> RulesDict;
+            public float AngleDeg;
 
-        private static Dictionary<char, string> rulesDict;
-        private static float angleDeg;
+            public void Clear()
+            {
+                Cache.Clear();
+                TransformStack.Clear();
+                RulesDict = null;
+                AngleDeg = 0f;
+            }
+        }
+
+        [ThreadStatic]
+        private static GenerationContext _sharedContext;
+
+        private static GenerationContext GetContext()
+        {
+            if (_sharedContext == null) _sharedContext = new GenerationContext();
+            _sharedContext.Clear();
+            return _sharedContext;
+        }
 
         public static List<(Vector2 from, Vector2 to)> GenerateWithLOD(
             LSystemData data, float viewWidth, float viewHeight, float prunePixelThreshold)
         {
             var segments = new List<(Vector2, Vector2)>(16384);
 
-            if (data == null || string.IsNullOrEmpty(data.axiom)) return segments;
+            if (data == null || string.IsNullOrEmpty(data.Axiom)) return segments;
 
-            rulesDict = data.GetRuleDictionary();
-            angleDeg = data.angle;
-            cache.Clear();
+            var ctx = GetContext();
+            ctx.RulesDict = data.BuildRuleDictionary();
+            ctx.AngleDeg = data.Angle;
 
-            sharedStack.Clear();
-            SubTreeData axiomData = ComputeStringTopology(data.axiom, data.iterations);
+            SubTreeMetrics axiomMetrics = ComputeStringMetrics(data.Axiom, data.Iterations, ctx);
 
-            float safeDiameter = axiomData.maxRadius * 2f;
+            float safeDiameter = axiomMetrics.maxRadius * 2f;
             float preScale = Mathf.Min(viewWidth, viewHeight) / Mathf.Max(safeDiameter, 0.0001f);
 
-            sharedStack.Clear();
+            ctx.TransformStack.Clear();
             Vector2 currentPos = Vector2.zero;
             int currentDir = 0;
-            ProcessStringWithPruning(data.axiom, data.iterations, ref currentPos, ref currentDir, segments, preScale, prunePixelThreshold);
+            ProcessStringWithPruning(data.Axiom, data.Iterations, ref currentPos, ref currentDir, segments, preScale, prunePixelThreshold, ctx);
 
             return segments;
         }
 
-        private static SubTreeData ComputeSubTree(char symbol, int depth)
+        private static SubTreeMetrics EvaluateSymbolMetrics(char symbol, int depth, GenerationContext ctx)
         {
             var key = new CacheKey(symbol, depth);
-            if (cache.TryGetValue(key, out var cached)) return cached;
+            if (ctx.Cache.TryGetValue(key, out var cached)) return cached;
 
-            SubTreeData result = new SubTreeData { hasDraws = false, maxRadius = 0f };
+            SubTreeMetrics result = new SubTreeMetrics { containsVisibleSegments = false, maxRadius = 0f };
 
-            if (depth == 0 || !rulesDict.ContainsKey(symbol))
+            if (depth == 0 || !ctx.RulesDict.ContainsKey(symbol))
             {
-                if (symbol == 'F' || symbol == 'G' || symbol == 'f')
+                switch (symbol)
                 {
-                    result.endPos = new Vector2(1, 0);
-                    result.endDirOffset = 0;
-                    result.maxRadius = 1f;
-                    result.hasDraws = (symbol != 'f');
+                    case 'F' or 'G' or 'f':
+                        result.endPos = new Vector2(1, 0);
+                        result.endDirOffset = 0;
+                        result.maxRadius = 1f;
+                        result.containsVisibleSegments = (symbol != 'f');
+                        break;
+                    case '+':
+                        result.endDirOffset = 1;
+                        break;
+                    case '-':
+                        result.endDirOffset = -1;
+                        break;
                 }
-                else if (symbol == '+') result.endDirOffset = 1;
-                else if (symbol == '-') result.endDirOffset = -1;
 
-                cache[key] = result;
+                ctx.Cache[key] = result;
                 return result;
             }
 
-            result = ComputeStringTopology(rulesDict[symbol], depth - 1);
-            cache[key] = result;
+            result = ComputeStringMetrics(ctx.RulesDict[symbol], depth - 1, ctx);
+            ctx.Cache[key] = result;
             return result;
         }
 
-        private static SubTreeData ComputeStringTopology(string str, int depth)
+        private static SubTreeMetrics ComputeStringMetrics(string str, int depth, GenerationContext ctx)
         {
-            SubTreeData result = new SubTreeData { hasDraws = false };
+            SubTreeMetrics result = new SubTreeMetrics { containsVisibleSegments = false };
             Vector2 pos = Vector2.zero;
             int dir = 0;
             float maxRad = 0f;
@@ -94,29 +119,29 @@ namespace LSystem
             {
                 if (c == '[')
                 {
-                    sharedStack.Push((pos, dir));
+                    ctx.TransformStack.Push((pos, dir));
                     continue;
                 }
 
                 if (c == ']')
                 {
-                    if (sharedStack.Count > 0)
+                    if (ctx.TransformStack.Count > 0)
                     {
-                        var s = sharedStack.Pop();
+                        var s = ctx.TransformStack.Pop();
                         pos = s.Item1;
                         dir = s.Item2;
                     }
                     continue;
                 }
 
-                SubTreeData child = ComputeSubTree(c, depth);
+                SubTreeMetrics child = EvaluateSymbolMetrics(c, depth, ctx);
 
-                if (child.hasDraws) result.hasDraws = true;
+                if (child.containsVisibleSegments) result.containsVisibleSegments = true;
 
                 float reach = pos.magnitude + child.maxRadius;
                 if (reach > maxRad) maxRad = reach;
 
-                pos += RotateVector(child.endPos, dir);
+                pos += RotateVector(child.endPos, dir, ctx.AngleDeg);
                 dir += child.endDirOffset;
 
                 if (pos.magnitude > maxRad) maxRad = pos.magnitude;
@@ -128,68 +153,68 @@ namespace LSystem
             return result;
         }
 
-        private static void ProcessStringWithPruning(string str, int depth, ref Vector2 pos, ref int dir, List<(Vector2, Vector2)> segments, float scale, float threshold)
+        private static void ProcessStringWithPruning(string str, int depth, ref Vector2 pos, ref int dir, List<(Vector2, Vector2)> segments, float scale, float threshold, GenerationContext ctx)
         {
             foreach (char c in str)
             {
                 if (c == '[')
                 {
-                    sharedStack.Push((pos, dir));
+                    ctx.TransformStack.Push((pos, dir));
                 }
                 else if (c == ']')
                 {
-                    if (sharedStack.Count > 0)
+                    if (ctx.TransformStack.Count > 0)
                     {
-                        var s = sharedStack.Pop();
+                        var s = ctx.TransformStack.Pop();
                         pos = s.Item1;
                         dir = s.Item2;
                     }
                 }
                 else
                 {
-                    GeneratePruned(c, depth, ref pos, ref dir, segments, scale, threshold);
+                    GeneratePruned(c, depth, ref pos, ref dir, segments, scale, threshold, ctx);
                 }
             }
         }
 
-        private static void GeneratePruned(char symbol, int depth, ref Vector2 pos, ref int dir, List<(Vector2, Vector2)> segments, float scale, float threshold)
+        private static void GeneratePruned(char symbol, int depth, ref Vector2 pos, ref int dir, List<(Vector2, Vector2)> segments, float scale, float threshold, GenerationContext ctx)
         {
-            if (depth == 0 || !rulesDict.ContainsKey(symbol))
+            if (depth == 0 || !ctx.RulesDict.ContainsKey(symbol))
             {
                 if (symbol == 'F' || symbol == 'G')
                 {
-                    Vector2 next = pos + RotateVector(new Vector2(1, 0), dir);
+                    Vector2 next = pos + RotateVector(new Vector2(1, 0), dir, ctx.AngleDeg);
                     segments.Add((pos, next));
                     pos = next;
                 }
-                else if (symbol == 'f') pos += RotateVector(new Vector2(1, 0), dir);
+                else if (symbol == 'f') pos += RotateVector(new Vector2(1, 0), dir, ctx.AngleDeg);
                 else if (symbol == '+') dir++;
                 else if (symbol == '-') dir--;
                 return;
             }
 
-            SubTreeData data = cache[new CacheKey(symbol, depth)];
-            float diameter = data.maxRadius * 2f;
+            SubTreeMetrics metrics = ctx.Cache[new CacheKey(symbol, depth)];
+            float diameter = metrics.maxRadius * 2f;
 
             if (diameter * scale < threshold)
             {
-                Vector2 endOffset = RotateVector(data.endPos, dir);
+                Vector2 endOffset = RotateVector(metrics.endPos, dir, ctx.AngleDeg);
                 Vector2 next = pos + endOffset;
 
-                if (data.hasDraws && endOffset.sqrMagnitude > 0.00001f)
+                if (metrics.containsVisibleSegments && endOffset.sqrMagnitude > 0.00001f)
                 {
                     segments.Add((pos, next));
                 }
 
                 pos = next;
-                dir += data.endDirOffset;
+                dir += metrics.endDirOffset;
                 return;
             }
 
-            ProcessStringWithPruning(rulesDict[symbol], depth - 1, ref pos, ref dir, segments, scale, threshold);
+            ProcessStringWithPruning(ctx.RulesDict[symbol], depth - 1, ref pos, ref dir, segments, scale, threshold, ctx);
         }
 
-        private static Vector2 RotateVector(Vector2 v, int dirIndex)
+        private static Vector2 RotateVector(Vector2 v, int dirIndex, float angleDeg)
         {
             if (v.sqrMagnitude == 0) return v;
             float rad = dirIndex * angleDeg * Mathf.Deg2Rad;

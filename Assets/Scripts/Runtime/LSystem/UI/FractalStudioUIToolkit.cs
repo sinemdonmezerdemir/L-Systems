@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -19,6 +20,11 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
     private DropdownField presetDropdown;
     private Button saveBtn;
+    private Button generateBtn;
+    private Button animateBtn;
+    private Button exportBtn;
+    private Button addRuleBtn;
+
     private TextField nameField;
     private TextField axiomField;
     private FloatField angleField;
@@ -30,8 +36,10 @@ public class FractalStudioUIToolkit : MonoBehaviour
     private Label statusLabel;
     private Toggle themeToggle;
 
-    private const string PRESET_LIST_KEY = "FractalStudio_PresetList";
-    private const string PRESET_DATA_PREFIX = "FractalStudio_Data_";
+    private const string PRESET_LIST_FILENAME = "FractalStudio_PresetList.json";
+    private const string PRESET_DATA_PREFIX = "FractalPreset_";
+
+    private string SaveDirectory => Application.persistentDataPath;
 
     void OnEnable()
     {
@@ -42,6 +50,11 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
         presetDropdown = root.Q<DropdownField>("preset-dropdown");
         saveBtn = root.Q<Button>("btn-save");
+        generateBtn = root.Q<Button>("btn-generate");
+        animateBtn = root.Q<Button>("btn-animate");
+        exportBtn = root.Q<Button>("btn-export");
+        addRuleBtn = root.Q<Button>("btn-add-rule");
+
         nameField = root.Q<TextField>("input-name");
         axiomField = root.Q<TextField>("input-axiom");
         angleField = root.Q<FloatField>("input-angle");
@@ -50,24 +63,21 @@ public class FractalStudioUIToolkit : MonoBehaviour
         iterationsField = root.Q<IntegerField>("input-iterations");
         rulesContainer = root.Q<VisualElement>("rules-container");
         fractalImage = root.Q<Image>("fractal-image");
+        themeToggle = root.Q<Toggle>("toggle-theme");
 
         lSystemRenderer.OnTextureUpdated += OnRenderCompleted;
 
-        themeToggle = root.Q<Toggle>("toggle-theme");
-        if (themeToggle != null)
-        {
-            themeToggle.RegisterValueChangedCallback(evt => OnThemeChanged(evt.newValue));
-        }
+        if (themeToggle != null) themeToggle.RegisterValueChangedCallback(OnThemeChangedEvent);
+        presetDropdown.RegisterValueChangedCallback(OnPresetSelectionChanged);
+
+        saveBtn.clicked += SaveCurrentPreset;
+        generateBtn.clicked += OnGenerateClicked;
+        animateBtn.clicked += OnAnimateClicked;
+        exportBtn.clicked += ExportImage;
+        addRuleBtn.clicked += AddEmptyRuleRow;
 
         ApplyGridBackground();
         CreateStatusLabel();
-
-        presetDropdown.RegisterValueChangedCallback(evt => LoadSelectedPreset());
-        saveBtn.clicked += SaveCurrentPreset;
-        root.Q<Button>("btn-generate").clicked += OnGenerateClicked;
-        root.Q<Button>("btn-animate").clicked += OnAnimateClicked;
-        root.Q<Button>("btn-export").clicked += () => lSystemRenderer.SaveToPNG();
-        root.Q<Button>("btn-add-rule").clicked += () => AddRuleRow("", "");
 
         activeData = ScriptableObject.CreateInstance<LSystemData>();
 
@@ -78,11 +88,23 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
     void OnDisable()
     {
-        if (lSystemRenderer != null)
-        {
-            lSystemRenderer.OnTextureUpdated -= OnRenderCompleted;
-        }
+        if (lSystemRenderer != null) lSystemRenderer.OnTextureUpdated -= OnRenderCompleted;
+
+        if (themeToggle != null) themeToggle.UnregisterValueChangedCallback(OnThemeChangedEvent);
+        if (presetDropdown != null) presetDropdown.UnregisterValueChangedCallback(OnPresetSelectionChanged);
+
+        if (saveBtn != null) saveBtn.clicked -= SaveCurrentPreset;
+        if (generateBtn != null) generateBtn.clicked -= OnGenerateClicked;
+        if (animateBtn != null) animateBtn.clicked -= OnAnimateClicked;
+        if (exportBtn != null) exportBtn.clicked -= ExportImage;
+        if (addRuleBtn != null) addRuleBtn.clicked -= AddEmptyRuleRow;
     }
+
+    private void OnThemeChangedEvent(ChangeEvent<bool> evt) => OnThemeChanged(evt.newValue);
+    private void OnPresetSelectionChanged(ChangeEvent<string> evt) => LoadSelectedPreset();
+    private void ExportImage() => lSystemRenderer.SaveToPNG();
+    private void AddEmptyRuleRow() => AddRuleRow("", "");
+
     private void OnRenderCompleted(Texture2D newTexture)
     {
         if (fractalImage == null || statusLabel == null) return;
@@ -124,17 +146,35 @@ public class FractalStudioUIToolkit : MonoBehaviour
         }
     }
 
+    [System.Serializable]
+    private class PresetListWrapper
+    {
+        public List<string> names = new List<string>();
+    }
+
     private List<string> GetSavedPresetNames()
     {
-        string listStr = PlayerPrefs.GetString(PRESET_LIST_KEY, "");
-        if (string.IsNullOrEmpty(listStr)) return new List<string>();
-        return listStr.Split(',').ToList();
+        string path = Path.Combine(SaveDirectory, PRESET_LIST_FILENAME);
+        if (!File.Exists(path)) return new List<string>();
+
+        try
+        {
+            string json = File.ReadAllText(path);
+            var wrapper = JsonUtility.FromJson<PresetListWrapper>(json);
+            return wrapper != null ? wrapper.names : new List<string>();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[FractalStudio] Preset listesi okunamadý: {e.Message}");
+            return new List<string>();
+        }
     }
 
     private void SavePresetNamesList(List<string> names)
     {
-        PlayerPrefs.SetString(PRESET_LIST_KEY, string.Join(",", names));
-        PlayerPrefs.Save();
+        string path = Path.Combine(SaveDirectory, PRESET_LIST_FILENAME);
+        var wrapper = new PresetListWrapper { names = names };
+        File.WriteAllText(path, JsonUtility.ToJson(wrapper));
     }
 
     private void SeedDefaultData()
@@ -148,16 +188,16 @@ public class FractalStudioUIToolkit : MonoBehaviour
         {
             if (data == null) continue;
 
-            string saveKey = PRESET_DATA_PREFIX + data.fractalName;
+            string filePath = Path.Combine(SaveDirectory, $"{PRESET_DATA_PREFIX}{data.FractalName}.json");
 
-            if (!PlayerPrefs.HasKey(saveKey))
+            if (!File.Exists(filePath))
             {
                 string json = JsonUtility.ToJson(data, true);
-                PlayerPrefs.SetString(saveKey, json);
+                File.WriteAllText(filePath, json);
 
-                if (!savedNames.Contains(data.fractalName))
+                if (!savedNames.Contains(data.FractalName))
                 {
-                    savedNames.Add(data.fractalName);
+                    savedNames.Add(data.FractalName);
                     listUpdated = true;
                 }
             }
@@ -173,7 +213,7 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
         presetDropdown.choices = files;
 
-        string currentSelection = activeData != null ? activeData.fractalName : "";
+        string currentSelection = activeData != null ? activeData.FractalName : "";
         if (files.Contains(currentSelection))
         {
             presetDropdown.SetValueWithoutNotify(currentSelection);
@@ -189,12 +229,13 @@ public class FractalStudioUIToolkit : MonoBehaviour
         string selectedName = presetDropdown.value;
         if (string.IsNullOrEmpty(selectedName) || selectedName == "No Data Found") return;
 
-        string saveKey = PRESET_DATA_PREFIX + selectedName;
-        if (PlayerPrefs.HasKey(saveKey))
+        string filePath = Path.Combine(SaveDirectory, $"{PRESET_DATA_PREFIX}{selectedName}.json");
+
+        if (File.Exists(filePath))
         {
-            string json = PlayerPrefs.GetString(saveKey);
+            string json = File.ReadAllText(filePath);
             JsonUtility.FromJsonOverwrite(json, activeData);
-            activeData.fractalName = selectedName;
+
             RefreshUIFromData();
         }
     }
@@ -203,14 +244,14 @@ public class FractalStudioUIToolkit : MonoBehaviour
     {
         SyncDataFromUI();
 
-        string saveKey = PRESET_DATA_PREFIX + activeData.fractalName;
+        string filePath = Path.Combine(SaveDirectory, $"{PRESET_DATA_PREFIX}{activeData.FractalName}.json");
         string json = JsonUtility.ToJson(activeData, true);
-        PlayerPrefs.SetString(saveKey, json);
+        File.WriteAllText(filePath, json);
 
         List<string> savedNames = GetSavedPresetNames();
-        if (!savedNames.Contains(activeData.fractalName))
+        if (!savedNames.Contains(activeData.FractalName))
         {
-            savedNames.Add(activeData.fractalName);
+            savedNames.Add(activeData.FractalName);
             SavePresetNamesList(savedNames);
         }
 
@@ -233,15 +274,15 @@ public class FractalStudioUIToolkit : MonoBehaviour
     {
         if (activeData == null) return;
 
-        nameField.value = activeData.fractalName;
-        axiomField.value = activeData.axiom;
-        angleField.value = activeData.angle;
-        lengthField.value = activeData.thickness;
-        startAngleField.value = activeData.startAngle;
-        iterationsField.value = activeData.iterations;
+        nameField.value = activeData.FractalName;
+        axiomField.value = activeData.Axiom;
+        angleField.value = activeData.Angle;
+        lengthField.value = activeData.Thickness;
+        startAngleField.value = activeData.StartAngle;
+        iterationsField.value = activeData.Iterations;
 
         rulesContainer.Clear();
-        foreach (var rule in activeData.rules)
+        foreach (var rule in activeData.Rules)
         {
             AddRuleRow(rule.symbol.ToString(), rule.replacement);
         }
@@ -297,28 +338,29 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
     private void SyncDataFromUI()
     {
-        activeData.fractalName = string.IsNullOrEmpty(nameField.value) ? "NewFractal" : nameField.value;
-        activeData.axiom = axiomField.value;
-        activeData.angle = angleField.value;
-        activeData.thickness = (int)lengthField.value;
-        activeData.startAngle = startAngleField.value;
+        string newName = string.IsNullOrEmpty(nameField.value) ? "NewFractal" : nameField.value;
+        string newAxiom = axiomField.value;
+        float newAngle = angleField.value;
+        int newThickness = (int)lengthField.value;
+        float newStartAngle = startAngleField.value;
 
         int safeIterations = Mathf.Clamp(iterationsField.value, 1, 10);
         if (iterationsField.value != safeIterations)
         {
             iterationsField.SetValueWithoutNotify(safeIterations);
         }
-        activeData.iterations = safeIterations;
 
-        activeData.rules.Clear();
+        var parsedRules = new List<LSystemRule>();
         foreach (var row in rulesContainer.Children())
         {
             var fields = row.Query<TextField>().ToList();
             if (fields.Count == 2 && !string.IsNullOrEmpty(fields[0].value))
             {
-                activeData.rules.Add(new LSystemRule { symbol = fields[0].value[0], replacement = fields[1].value });
+                parsedRules.Add(new LSystemRule { symbol = fields[0].value[0], replacement = fields[1].value });
             }
         }
+
+        activeData.UpdateData(newName, newAxiom, newAngle, newThickness, newStartAngle, safeIterations, parsedRules);
 
         float currentWidth = fractalImage.parent.resolvedStyle.width;
         float currentHeight = fractalImage.parent.resolvedStyle.height;
@@ -335,12 +377,12 @@ public class FractalStudioUIToolkit : MonoBehaviour
     private void OnGenerateClicked()
     {
         SyncDataFromUI();
-        lSystemRenderer.DrawDirect();
+        lSystemRenderer.RenderImmediate();
     }
 
     private void OnAnimateClicked()
     {
         SyncDataFromUI();
-        lSystemRenderer.DrawAnimated(animationStepDelay);
+        lSystemRenderer.RenderAnimated(animationStepDelay);
     }
 }
