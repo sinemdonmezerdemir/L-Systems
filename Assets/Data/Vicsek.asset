@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Vicsek
   m_EditorClassIdentifier: 
   fractalName: Vicsek
-  axiom: F-F-F-F
+  axiom: F+F+F+F
   angle: 90
-  segmentLength: 1
-  iterations: 5
+  thickness: 1
+  iterations: 7
   startAngle: 0
   rules:
   - symbol: 70
-    replacement: F-F+F+F-F
+    replacement: F+F-F-F+F

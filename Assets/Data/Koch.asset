@@ -15,9 +15,9 @@ MonoBehaviour:
   fractalName: Koch
   axiom: F
   angle: 60
-  segmentLength: 1
-  iterations: 5
+  thickness: 1
+  iterations: 7
   startAngle: 0
   rules:
   - symbol: 70
-    replacement: F-F++F-F
+    replacement: F+F--F+F

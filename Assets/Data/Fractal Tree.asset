@@ -15,9 +15,9 @@ MonoBehaviour:
   fractalName: Fractal Tree
   axiom: X
   angle: 20
-  segmentLength: 1
+  thickness: 1
   iterations: 10
-  startAngle: -90
+  startAngle: 90
   rules:
   - symbol: 88
     replacement: F[+X]F[-X]+X

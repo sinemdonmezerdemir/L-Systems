@@ -8,10 +8,6 @@ using UnityEngine;
 
 namespace LSystem
 {
-    /// <summary>
-    /// Handles the rasterization of L-System segments into a 2D Texture.
-    /// Implements memory-efficient texture reuse and event-based updates.
-    /// </summary>
     public class LSystemRenderer : MonoBehaviour
     {
         public LSystemData data;
@@ -21,14 +17,15 @@ namespace LSystem
         public int textureHeight = 1024;
         public int padding = 20;
 
+        [Tooltip("Piksel cinsinden budama eþiði. 0.5 ile 1.0 arasý deðerler görsel kayýp yaþatmadan devasa hýz artýþý saðlar.")]
+        public float lodPruneThreshold = 0.5f;
+
         public int currentDisplayIteration = 0;
         public bool isAnimating = false;
 
-        // --- THEME CONFIGURATION ---
         public Color32 currentBgColor = new Color32(0, 0, 0, 0);
         public Color32 currentLineColor = new Color32(99, 102, 241, 255);
 
-        // Event to notify listeners (like UI) when a new frame is rendered
         public event Action<Texture2D> OnTextureUpdated;
 
         private Coroutine animationCoroutine;
@@ -83,22 +80,42 @@ namespace LSystem
 
             int originalIter = data.iterations;
             data.iterations = currentIteration;
-            string lString = LSystemGenerator.Generate(data);
-            data.iterations = originalIter;
-
-            var segments = LSystemGenerator.Interpret(lString, data.segmentLength, data.angle, Vector2.zero, data.startAngle);
-            if (segments.Count == 0) return;
-
-            // Calculate bounding box for dynamic scaling
-            Vector2 min = segments[0].from, max = segments[0].from;
-            foreach (var (f, t) in segments)
-            {
-                min = Vector2.Min(min, f); min = Vector2.Min(min, t);
-                max = Vector2.Max(max, f); max = Vector2.Max(max, t);
-            }
 
             float drawW = textureWidth - padding * 2;
             float drawH = textureHeight - padding * 2;
+
+            // 1. Jeneratörden LOD budamasý yapýlmýþ ham segmentleri al
+            var segments = LSystemGenerator.GenerateWithLOD(data, drawW, drawH, lodPruneThreshold);
+
+            data.iterations = originalIter;
+
+            if (segments.Count == 0) return;
+
+            // 2. Baþlangýç açýsý rotasyonu ve Kesin (Exact) Min/Max Sýnýr Hesaplamasý
+            float startRad = data.startAngle * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(startRad);
+            float sin = Mathf.Sin(startRad);
+
+            Vector2 min = new Vector2(float.MaxValue, float.MaxValue);
+            Vector2 max = new Vector2(float.MinValue, float.MinValue);
+
+            for (int i = 0; i < segments.Count; i++)
+            {
+                var (f, t) = segments[i];
+
+                // Global startAngle'a göre döndür
+                Vector2 rFrom = new Vector2(f.x * cos - f.y * sin, f.x * sin + f.y * cos);
+                Vector2 rTo = new Vector2(t.x * cos - t.y * sin, t.x * sin + t.y * cos);
+
+                // Bellek kopyalamasýný azaltmak için struct'ý in-place güncelle
+                segments[i] = (rFrom, rTo);
+
+                // Sýnýrlarý geniþlet
+                min = Vector2.Min(min, Vector2.Min(rFrom, rTo));
+                max = Vector2.Max(max, Vector2.Max(rFrom, rTo));
+            }
+
+            // 3. Ekrana Sýðdýrma: Ölçek (Scale) ve Merkezleme (Offset)
             float scale = Mathf.Min(
                 drawW / Mathf.Max(max.x - min.x, 0.0001f),
                 drawH / Mathf.Max(max.y - min.y, 0.0001f));
@@ -106,7 +123,7 @@ namespace LSystem
             float offsetX = padding + (drawW - (max.x - min.x) * scale) * 0.5f;
             float offsetY = padding + (drawH - (max.y - min.y) * scale) * 0.5f;
 
-            // OPTIMIZATION: Reuse texture memory if dimensions are the same
+            // 4. Doku (Texture) Bellek Yönetimi
             if (resultTexture == null || resultTexture.width != textureWidth || resultTexture.height != textureHeight)
             {
                 if (resultTexture != null) Destroy(resultTexture);
@@ -115,23 +132,25 @@ namespace LSystem
 
             NativeArray<Color32> pixels = resultTexture.GetRawTextureData<Color32>();
 
-            // Optimized background fill
+            // Arka plan temizliði. C# sürümü destekliyorsa: pixels.AsSpan().Fill(currentBgColor);
             Color32 bg = currentBgColor;
             for (int i = 0; i < pixels.Length; i++) pixels[i] = bg;
 
-            Color32 line = currentLineColor;
+            Color32 lineCol = currentLineColor;
+            int thick = data.thickness;
+
+            // 5. Nihai Çizim (Rasterizasyon)
             foreach (var (from, to) in segments)
             {
                 int x0 = Mathf.RoundToInt((from.x - min.x) * scale + offsetX);
-                int y0 = Mathf.RoundToInt((max.y - from.y) * scale + offsetY);
+                int y0 = Mathf.RoundToInt((from.y - min.y) * scale + offsetY);
                 int x1 = Mathf.RoundToInt((to.x - min.x) * scale + offsetX);
-                int y1 = Mathf.RoundToInt((max.y - to.y) * scale + offsetY);
-                DrawLine(pixels, textureWidth, textureHeight, x0, y0, x1, y1, line);
+                int y1 = Mathf.RoundToInt((to.y - min.y) * scale + offsetY);
+
+                DrawLine(pixels, textureWidth, textureHeight, x0, y0, x1, y1, lineCol, thick);
             }
 
             resultTexture.Apply();
-
-            // Notify UI that a new frame is ready
             OnTextureUpdated?.Invoke(resultTexture);
         }
 
@@ -140,17 +159,16 @@ namespace LSystem
             if (resultTexture == null) return;
 
             byte[] bytes = resultTexture.EncodeToPNG();
-            string defaultFileName = $"Fractal_{System.DateTime.Now:yyyyMMdd_HHmmss}.png";
+            string defaultFileName = $"Fractal_{DateTime.Now:yyyyMMdd_HHmmss}.png";
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-            string base64 = System.Convert.ToBase64String(bytes);
+            string base64 = Convert.ToBase64String(bytes);
             DownloadImage(defaultFileName, base64);
 #else
-            string userPath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+            string userPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             string downloadsPath = Path.Combine(userPath, "Downloads");
 
-            if (!Directory.Exists(downloadsPath))
-                Directory.CreateDirectory(downloadsPath);
+            if (!Directory.Exists(downloadsPath)) Directory.CreateDirectory(downloadsPath);
 
 #if UNITY_EDITOR
             string path = UnityEditor.EditorUtility.SaveFilePanel("Save Fractal", downloadsPath, defaultFileName, "png");
@@ -167,15 +185,45 @@ namespace LSystem
 #endif
         }
 
-        private static void DrawLine(NativeArray<Color32> pixels, int w, int h, int x0, int y0, int x1, int y1, Color32 col)
+        /// <summary>
+        /// Bresenham Tabanlý, Dik Eksen (Perpendicular Span) Optimizasyonlu Çizgi Algoritmasý
+        /// </summary>
+        private static void DrawLine(NativeArray<Color32> pixels, int w, int h, int x0, int y0, int x1, int y1, Color32 col, int thickness)
         {
             int dx = Mathf.Abs(x1 - x0), dy = -Mathf.Abs(y1 - y0);
             int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
             int err = dx + dy;
 
+            // Çizgi türevinin hangi eksende baskýn olduðunu belirle (X mi Y mi?)
+            bool isXDominant = dx > -dy;
+
+            // Fýrçayý çizgiyi ortalayacak þekilde daðýt
+            int halfThick = thickness / 2;
+            int thickRem = (thickness - 1) / 2;
+
             while (true)
             {
-                if (x0 >= 0 && x0 < w && y0 >= 0 && y0 < h) pixels[y0 * w + x0] = col;
+                if (isXDominant)
+                {
+                    // X ekseninde ilerlerken Y ekseninde (yukarý/aþaðý) kalýnlýk ver
+                    for (int j = -halfThick; j <= thickRem; j++)
+                    {
+                        int py = y0 + j;
+                        if (x0 >= 0 && x0 < w && py >= 0 && py < h)
+                            pixels[py * w + x0] = col;
+                    }
+                }
+                else
+                {
+                    // Y ekseninde ilerlerken X ekseninde (saða/sola) kalýnlýk ver
+                    for (int i = -halfThick; i <= thickRem; i++)
+                    {
+                        int px = x0 + i;
+                        if (px >= 0 && px < w && y0 >= 0 && y0 < h)
+                            pixels[y0 * w + px] = col;
+                    }
+                }
+
                 if (x0 == x1 && y0 == y1) break;
                 int e2 = err * 2;
                 if (e2 >= dy) { if (x0 == x1) break; err += dy; x0 += sx; }

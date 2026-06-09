@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: Sierpinski
   m_EditorClassIdentifier: 
   fractalName: Sierpinski
-  axiom: F-G-G
+  axiom: F+G+G
   angle: 120
-  segmentLength: 1
-  iterations: 5
+  thickness: 1
+  iterations: 7
   startAngle: 0
   rules:
   - symbol: 70
-    replacement: F-G+F+G-F
+    replacement: F+G-F-G+F
   - symbol: 71
     replacement: GG

@@ -15,11 +15,11 @@ MonoBehaviour:
   fractalName: Fractal Fern
   axiom: X
   angle: 22.5
-  segmentLength: 1
-  iterations: 8
-  startAngle: -90
+  thickness: 1
+  iterations: 10
+  startAngle: 90
   rules:
   - symbol: 88
-    replacement: F-[[X]+X]+F[+FX]-X
+    replacement: F+[[X]-X]-F[-FX]+X
   - symbol: 70
     replacement: FF

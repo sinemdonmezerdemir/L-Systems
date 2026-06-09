@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5bdf47d11d4c0741a98f65164438a4c, type: 3}
   m_Name: Kochq
   m_EditorClassIdentifier: 
-  fractalName: Kochq
-  axiom: F-F-F-F
+  fractalName: QuadraticKoch
+  axiom: F+F+F+F
   angle: 90
-  segmentLength: 1
-  iterations: 6
+  thickness: 1
+  iterations: 7
   startAngle: 0
   rules:
   - symbol: 70
-    replacement: F-F+F+FF-F-F+F
+    replacement: F+F-F-FF+F+F-F

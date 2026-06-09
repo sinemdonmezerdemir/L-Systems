@@ -40,7 +40,6 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
         var root = uiDocument.rootVisualElement;
 
-        // UI Element Bindings
         presetDropdown = root.Q<DropdownField>("preset-dropdown");
         saveBtn = root.Q<Button>("btn-save");
         nameField = root.Q<TextField>("input-name");
@@ -52,10 +51,8 @@ public class FractalStudioUIToolkit : MonoBehaviour
         rulesContainer = root.Q<VisualElement>("rules-container");
         fractalImage = root.Q<Image>("fractal-image");
 
-        // Event Registration: Subscription to the Renderer
         lSystemRenderer.OnTextureUpdated += OnRenderCompleted;
 
-        // Theme Listener
         themeToggle = root.Q<Toggle>("toggle-theme");
         if (themeToggle != null)
         {
@@ -65,7 +62,6 @@ public class FractalStudioUIToolkit : MonoBehaviour
         ApplyGridBackground();
         CreateStatusLabel();
 
-        // Event Registrations
         presetDropdown.RegisterValueChangedCallback(evt => LoadSelectedPreset());
         saveBtn.clicked += SaveCurrentPreset;
         root.Q<Button>("btn-generate").clicked += OnGenerateClicked;
@@ -82,17 +78,11 @@ public class FractalStudioUIToolkit : MonoBehaviour
 
     void OnDisable()
     {
-        // Proper event unsubscription to prevent memory leaks
         if (lSystemRenderer != null)
         {
             lSystemRenderer.OnTextureUpdated -= OnRenderCompleted;
         }
     }
-
-    /// <summary>
-    /// Event handler for when the renderer completes a drawing cycle.
-    /// Replaces the need for polling in LateUpdate.
-    /// </summary>
     private void OnRenderCompleted(Texture2D newTexture)
     {
         if (fractalImage == null || statusLabel == null) return;
@@ -246,7 +236,7 @@ public class FractalStudioUIToolkit : MonoBehaviour
         nameField.value = activeData.fractalName;
         axiomField.value = activeData.axiom;
         angleField.value = activeData.angle;
-        lengthField.value = activeData.segmentLength;
+        lengthField.value = activeData.thickness;
         startAngleField.value = activeData.startAngle;
         iterationsField.value = activeData.iterations;
 
@@ -310,7 +300,7 @@ public class FractalStudioUIToolkit : MonoBehaviour
         activeData.fractalName = string.IsNullOrEmpty(nameField.value) ? "NewFractal" : nameField.value;
         activeData.axiom = axiomField.value;
         activeData.angle = angleField.value;
-        activeData.segmentLength = lengthField.value;
+        activeData.thickness = (int)lengthField.value;
         activeData.startAngle = startAngleField.value;
 
         int safeIterations = Mathf.Clamp(iterationsField.value, 1, 10);

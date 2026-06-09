@@ -153,8 +153,15 @@ MonoBehaviour:
   textureWidth: 1024
   textureHeight: 1024
   padding: 20
+  lodPruneThreshold: 0.5
   currentDisplayIteration: 0
   isAnimating: 0
+  currentBgColor:
+    serializedVersion: 2
+    rgba: 0
+  currentLineColor:
+    serializedVersion: 2
+    rgba: 4294010467
 --- !u!4 &605201728
 Transform:
   m_ObjectHideFlags: 0
@@ -208,8 +215,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5e8f27585ee24ab4c9f4b7f325bea174, type: 2}
   - {fileID: 11400000, guid: 8b8743520b7c3554e98af547201a5806, type: 2}
   - {fileID: 11400000, guid: 8fde51bcbab247940a1a6da97221f366, type: 2}
-  - {fileID: 11400000, guid: 69d442e574f198844a463e33896c6070, type: 2}
   - {fileID: 11400000, guid: 4ae5e87a01079c64e95dbe3e49eb61d6, type: 2}
+  - {fileID: 11400000, guid: 69d442e574f198844a463e33896c6070, type: 2}
+  - {fileID: 11400000, guid: 484e9d69b025cae46af585bfbefbba32, type: 2}
   - {fileID: 11400000, guid: 9d7b6479c6c34474091f60b4cbe79f5f, type: 2}
 --- !u!114 &767834823
 MonoBehaviour:

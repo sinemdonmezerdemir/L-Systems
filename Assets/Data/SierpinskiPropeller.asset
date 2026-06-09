@@ -10,16 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5bdf47d11d4c0741a98f65164438a4c, type: 3}
-  m_Name: Cantor
+  m_Name: SierpinskiPropeller
   m_EditorClassIdentifier: 
-  fractalName: Cantor
-  axiom: F
-  angle: 60
+  fractalName: SierpinskiPropeller
+  axiom: X
+  angle: 120
   thickness: 1
   iterations: 7
   startAngle: 0
   rules:
+  - symbol: 88
+    replacement: F+G+GF+G+GF+G+G
   - symbol: 70
-    replacement: FfF
-  - symbol: 102
-    replacement: fff
+    replacement: F+G-F-G+F
+  - symbol: 71
+    replacement: GG
