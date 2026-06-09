@@ -27,8 +27,8 @@ The resulting string is interpreted as turtle-graphics commands: `F` / `G` draw 
 
 | Parameter | Value |
 | --- | --- |
-| Axiom | `F-G-G` |
-| Rules | `F → F-G+F+G-F`, `G → GG` |
+| Axiom | `F+G+G` |
+| Rules | `F → F+G-F-G+F`, `G → GG` |
 | Angle | `120°` |
 
 ---
